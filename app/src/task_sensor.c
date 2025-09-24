@@ -162,7 +162,7 @@ void task_sensor_update(void *parameters)
 void task_sensor_statechart(void)
 {
 	uint32_t index;
-	uint32_t tick;
+	//uint32_t tick;
 	const task_sensor_cfg_t *p_task_sensor_cfg;
 	task_sensor_dta_t *p_task_sensor_dta;
 
@@ -205,7 +205,7 @@ void task_sensor_statechart(void)
 						else
 						{
 							p_task_sensor_dta->state = ST_BTN_XX_DOWN;
-							put_event_task_system(p_task_sensor_cfg->signal_up);
+							put_event_task_system(p_task_sensor_cfg->signal_down);
 						}
 						break;
 					case EV_BTN_XX_UP:
@@ -223,7 +223,7 @@ void task_sensor_statechart(void)
 
 				if (EV_BTN_XX_UP == p_task_sensor_dta->event)
 				{
-					tick = TICK_MAX;
+					p_task_sensor_dta->tick = TICK_MAX;
 					p_task_sensor_dta->state = ST_BTN_XX_RISING;
 				}
 
@@ -246,7 +246,7 @@ void task_sensor_statechart(void)
 						else
 						{
 							p_task_sensor_dta->state = ST_BTN_XX_UP;
-							put_event_task_system(p_task_sensor_cfg->signal_down);
+							put_event_task_system(p_task_sensor_cfg->signal_up);
 						}
 						break;
 
