@@ -1,50 +1,66 @@
-﻿Análisis y Documentación del Archivo app.c
-Estructura y Componentes Detallados
-1. Inclusiones (includes)
-* main.h: Contiene las definiciones y declaraciones principales del proyecto, probablemente incluyendo las configuraciones de los periféricos generadas por STM32CubeIDE.
-* logger.h: Provee macros o funciones para registrar mensajes de diagnóstico o depuración, facilitando el seguimiento de la ejecución del programa.
-* dwt.h: Proporciona acceso al contador de ciclos del núcleo ARM (Data Watchpoint and Trace unit), utilizado para mediciones de tiempo de alta precisión.
-* board.h: Define abstracciones relacionadas con el hardware específico de la placa, como la configuración de pines o periféricos a nivel de aplicación.
-* task_system.h, task_actuator.h, task_sensor.h: Archivos de cabecera que declaran las funciones de inicialización y actualización para cada una de las tareas del sistema (sistema, actuador y sensor).
-2. Tipos de Datos (typedef)
-* task_cfg_t: Estructura que define la configuración de una tarea. Contiene:
-   * task_init: Puntero a la función de inicialización de la tarea.
-   * task_update: Puntero a la función de actualización de la tarea, que contiene la lógica principal.
-   * parameters: Puntero a un bloque de parámetros que se puede pasar a las funciones de la tarea.
-* * task_dta_t: Estructura que almacena los datos de ejecución de una tarea. En este caso, contiene:
-   * WCET: Variable de tipo uint32_t para almacenar el Peor Tiempo de Ejecución medido en microsegundos.
-* 3. Datos Internos y Externos
-* task_cfg_list[]: Array constante de estructuras task_cfg_t. Define el conjunto de tareas que el planificador debe ejecutar. En este caso, se declaran tres tareas: task_sensor, task_system y task_actuator. El orden en este array determina el orden de ejecución.
-* task_dta_list[]: Array de estructuras task_dta_t que almacena los datos de ejecución (como el WCET) para cada tarea definida en task_cfg_list.
-* g_app_cnt: Contador global que registra el número de veces que se ha ejecutado el ciclo principal de la aplicación.
-* g_app_runtime_us: Almacena el tiempo de ejecución total del último ciclo de actualización de todas las tareas, medido en microsegundos.
-* g_app_tick_cnt: Contador de "ticks" del sistema, incrementado por la interrupción del Systick. Es una variable volatile para asegurar que el compilador no optimice su acceso, ya que puede ser modificada de forma asíncrona por una interrupción.
-4. Patrones de Diseño de Software
-* Planificador Cíclico (Cyclic Executive): El diseño se basa en un bucle principal que se activa periódicamente. La función app_update se ejecuta en cada "tick" del sistema y, a su vez, invoca las funciones de actualización de cada tarea en un orden fijo. Este es un patrón común en sistemas de tiempo real simples donde el determinismo es clave.
-* Inyección de Dependencias (mediante punteros a función): La estructura task_cfg_t y el array task_cfg_list permiten añadir, eliminar o reordenar tareas sin modificar la lógica principal del planificador en app.c. Las tareas se "inyectan" en el planificador a través de punteros a sus funciones de inicialización y actualización.
-Descripción de las Funciones
-void app_init(void)
-* Propósito: Inicializa el módulo de la aplicación y todas las tareas configuradas.
-* Funcionamiento:
-   1. Imprime mensajes de bienvenida y estado inicial a través del logger.
-   2. Inicializa el contador de ciclos del DWT para permitir mediciones de tiempo precisas.
-   3. Recorre el array task_cfg_list y llama a la función de inicialización (task_x_init) de cada tarea.
-   4. Inicializa las estructuras de datos de ejecución, como el WCET de cada tarea.
-   5. Inicializa los contadores de ticks globales, protegiendo esta operación mediante la deshabilitación y posterior habilitación de las interrupciones (__asm("CPSID i") y __asm("CPSIE i")) para evitar condiciones de carrera.
-* void app_update(void)
-* Propósito: Es la función principal del planificador, que ejecuta el ciclo de actualización de las tareas.
-* Funcionamiento:
-   1. Verifica si hay "ticks" pendientes (g_app_tick_cnt > 0). Esta comprobación se realiza en una sección crítica (con interrupciones deshabilitadas) para garantizar la atomicidad de la lectura y decremento.
-   2. Si hay un tick pendiente, entra en un bucle while que se ejecuta mientras haya tiempo de procesamiento asignado (es decir, ticks).
-   3. Dentro del bucle, para cada tarea en task_cfg_list:
-      * Resetea el contador de ciclos.
-      * Llama a la función de actualización de la tarea (task_x_update).
-      * Mide el tiempo de ejecución de la función task_x_update utilizando el contador de ciclos del DWT.
-      * Actualiza el tiempo de ejecución total del ciclo (g_app_runtime_us).
-      * Compara el tiempo de ejecución medido con el WCET almacenado y lo actualiza si el valor actual es mayor.
-   4. El bucle continúa hasta que se procesan todos los ticks acumulados.
-void HAL_SYSTICK_Callback(void)
-* Propósito: Es una función de callback que el sistema HAL de STM32 llama en cada interrupción del temporizador Systick (generalmente configurado para 1 ms).
-* Funcionamiento:
-   1. Incrementa el contador de ticks global de la aplicación (g_app_tick_cnt).
-   2. Incrementa los contadores de ticks específicos de cada tarea (g_task_sensor_tick_cnt, g_task_system_tick_cnt, g_task_actuator_tick_cnt). Estos contadores pueden ser utilizados por las propias tareas para implementar lógica temporizada.
+MAIN.C
+
+main(c) llama a HAL_Init() y luego a SystemClock_Config().
+Con eso, quedan configurados SysTick (1ms por defecto) y SystemCoreClock (frecuencia del CPU)
+
+Inicializa periféricos (GPIO, UART) y llama a app_init().
+Se queda en el while(1) llamando a app_update().
+
+APP.C
+
+const task_cfg_t task_cfg_list[] = {
+  {task_sensor_init, task_sensor_update, NULL},
+  {task_system_init, task_system_update, NULL},
+  {task_actuator_init, task_actuator_update, NULL}
+};
+
+en app_init() se llama a los task_xxx_init() y se inicializan contadores/estadísticos WCET.
+
+El pulso temporal lo da HAL_SYSTICK_Callback(), ahí se incrementa g_app_tick_cnt.
+
+En app_update():
+	Se chequea si hay tiempo disponible mirando g_app_tick_cnt. Si hay, lo consume
+	(decrementa) y ejecuta una pasada por todas las tareas (sensor -> system -> actuator)
+	
+	Mide tiempo de cada tarea con DWT para WCET y acumula en g_app_runtime_us el runtime total del ciclo.
+	
+	
+g_app_runtime_us: cuánto tardó todo el ciclo (la pasada por las tres tareas). Se mira en "Live Expressions" mientras corre.
+
+WCET por tarea: es el peor caso observado para cada task_xxx_update(). [WCET] = uS.
+
+LOGGER_INFO(): si me logueo dentro de una tarea, suben g_app_runtime_us y el WCET. Lo puedo mostrar con logs y sin logs.
+
+
+STATECHARTS:
+
+task_sensor_update(): implementa el Sensor Statechart (leer botón)
+task_system_update(): implementa el System Statechart (lógica/algoritmo que reacciona a eventos del sensor)
+task_actuator_update(): implementa el Actuator Statechart (controlar LED)
+
+Patrón: switch(state) + if por cada transición, y cuando corresponde
+		se emite una señal a la siguiente tarea con una función del
+		tipo put_event_task_...
+		
+void task_system_update(void *p) {
+  switch(system_dta.state) {
+    case SYS_IDLE:
+      // if(evento) { system_dta.state = SYS_ON; put_event_task_actuator(EV_LED_ON); }
+      break;
+    case SYS_ON:
+      // if(timeout || evento) { system_dta.state = SYS_IDLE; put_event_task_actuator(EV_LED_OFF); }
+      break;
+    // ...
+  }
+}
+		
+
+
+
+
+
+
+
+
+
+

@@ -57,11 +57,14 @@
 #define DEL_BTN_XX_MIN				0ul
 #define DEL_BTN_XX_MED				25ul
 #define DEL_BTN_XX_MAX				50ul
-#define TICK_MAX					50ul
 
 /********************** internal data declaration ****************************/
 const task_sensor_cfg_t task_sensor_cfg_list[] = {
 	{ID_BTN_A,  BTN_A_PORT,  BTN_A_PIN,  BTN_A_PRESSED, DEL_BTN_XX_MAX,
+	 EV_SYS_IDLE,  EV_SYS_LOOP_DET},
+	{ID_BTN_B,  BTN_B_PORT,  BTN_B_PIN,  BTN_B_PRESSED, DEL_BTN_XX_MAX,
+	 EV_SYS_IDLE,  EV_SYS_LOOP_DET},
+	{ID_BTN_C,  BTN_C_PORT,  BTN_C_PIN,  BTN_C_PRESSED, DEL_BTN_XX_MAX,
 	 EV_SYS_IDLE,  EV_SYS_LOOP_DET}
 };
 
@@ -187,7 +190,7 @@ void task_sensor_statechart(void)
 
 				if (EV_BTN_XX_DOWN == p_task_sensor_dta->event)
 				{
-					p_task_sensor_dta->tick = TICK_MAX;
+					p_task_sensor_dta->tick = p_task_sensor_cfg->tick_max;
 					p_task_sensor_dta->state = ST_BTN_XX_FALLING;
 				}
 				//else{
@@ -223,7 +226,7 @@ void task_sensor_statechart(void)
 
 				if (EV_BTN_XX_UP == p_task_sensor_dta->event)
 				{
-					p_task_sensor_dta->tick = TICK_MAX;
+					p_task_sensor_dta->tick = p_task_sensor_cfg->tick_max;
 					p_task_sensor_dta->state = ST_BTN_XX_RISING;
 				}
 
