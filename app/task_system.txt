@@ -1,7 +1,73 @@
-  task_system.c (task_system.h, task_system_attribute.h)
-   Non-Blocking & Update By Time Code -> System Modeling
+TASK_SISTEM.C: es la lógica central. Consume eventos que le llegan, avanza su máquina de estados y,
+cuando corresponde, emite órdenes al actuador.
 
-  task_system_interface.c (task_system_interface.h)
-   Non-Blocking Code
+TASK_SYSTEM_ATTRIBUTE.H: TIPOS Y DATOS.
 
-...
+Eventos del sistema: sirven para excitar al statechart
+
+Datos del sistema:
+	Tick: temporizador interno
+	State: estado actual
+	Event: último evento
+	Flag: hay evento pendiente
+	
+Tabla de transiciones: documenta qué evento y guardas disparan el próximo estado y acciones.
+ES LA ESPECIFICACIÓN QUE EL .C DEBE RESPETAR.
+
+TASK_SYSTEM.C: ESTRUCTURA Y PATRÓN.
+
+Constantes de tiempo: DEL_SYS_MIN/MED/MAX para temporizaciones de estados.
+
+Dato global: task_system_dta = {tick, state, event, flag} inicializado en IDLE sin evento
+
+Contadores: g_task_system_cnt (pasadas) y g_task_system_tick_cnt (ticks de tiempo)
+
+Inicialización: task_system_init
+	Log inicial, reset de contador, init de cola de eventos del sistema, seteo de
+	state=ST_SYS_IDLE, event=EV_SYS_IDLE, flag=false. Listo para empezar a consumir eventos.
+	
+Planificación: task_system_update
+	Consume ticks (decrementa a g_task_system_tick_cnt si > 0) y mientras quede trabajo pendiente, llama
+	a task_system_statechart()
+	
+Núcleo: task_system_statechart
+	Entrada de eventos: si any_event_task_system() es true, entonces flag=true
+	y event=get_evemt_task_system()
+	
+	Switch(state) con transiciones y acciones:
+		ST_SYS_IDLE: si llega EV_SYS_LOOP_DET, entonces pasa a ST_SYS_ACTIVE_01 y envía a actuator 
+		EV_LED_XX_ON para ID_LED_A (enciende LED). Limpia flag. 	
+
+		ST_SYS_ACTIVE_01: si llega EV_SYS_IDLE, entonces vuelve a IDLE y manda EV_LED_XX_OFF (apaga LED).
+		Limpia flag. 
+
+
+		ST_SYS_ACTIVE_02 … _06: están de base vacíos (placeholders) para completar según
+		la foto (temporizaciones, botones manuales, IR, etc.). El default resetea a IDLE
+		por seguridad.
+		
+		
+TASK_SYSTEM_INTERFACE.H: INTERFAZ DE EVENTOS (COLA).
+
+Expone 4 primitivas para la comunicación de productor y consumidor:
+	init_queue_event_task_system(): inicializa la cola circular
+	put_event_task_system(event): produce (encola un evento)
+	get_event_task_system(): consume (desencola próximo evento)
+	any_event_task_system(): chequeo rápido de cola no vacía
+	
+
+TASK_SYSTEM.PNG: CÓMO DEBE QUEDAR EL COMPORTAMIENTO.
+
+El diagrama muestra la secuencia completa que se espera implementar.
+
+
+
+Patrones que se ven:
+	Statechart explícito con switch(state) y flag/event
+	Update-by-time sobre ticks de SysTick
+	Productor/consumidor con cola circular
+	Acoplamiento débil con actuador vía mensajes (put_event_task_actuator)
+		
+		
+		
+		
