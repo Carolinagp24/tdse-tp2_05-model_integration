@@ -57,7 +57,7 @@
 
 #define DEL_SYS_MIN					0ul
 #define DEL_SYS_MED					50ul
-#define DEL_SYS_MAX					500ul
+#define DEL_SYS_MAX					1500ul
 
 /********************** internal data declaration ****************************/
 task_system_dta_t task_system_dta =
@@ -182,7 +182,7 @@ void task_system_statechart(void)
 
 		if ((true == p_task_system_dta->flag) && (EV_SYS_MANUAL_BTN == p_task_system_dta->event))
 		{
-			p_task_system_dta->flag = false;
+			//p_task_system_dta->flag = false;
 			p_task_system_dta->tick = DEL_SYS_MAX;
 			put_event_task_actuator(EV_LED_XX_BLINK, ID_LED_A);
 			p_task_system_dta->state = ST_SYS_ACTIVE_02;
@@ -202,7 +202,7 @@ void task_system_statechart(void)
 		else if ((true == p_task_system_dta->flag) && (0 < p_task_system_dta->tick))
 		{
 			p_task_system_dta->tick--;
-			p_task_system_dta->flag = false;
+			//p_task_system_dta->flag = false;
 		}
 
 		break;
@@ -229,7 +229,7 @@ void task_system_statechart(void)
 	case ST_SYS_ACTIVE_05:
 		if ((true == p_task_system_dta->flag) && (EV_SYS_NOT_IR_PHO_CELL == p_task_system_dta->event))
 		{
-			p_task_system_dta->flag = false;
+			//p_task_system_dta->flag = false;
 			p_task_system_dta->state = ST_SYS_ACTIVE_06;
 			p_task_system_dta->tick = DEL_SYS_MAX;
 			put_event_task_actuator(EV_LED_XX_BLINK, ID_LED_A);
@@ -250,7 +250,7 @@ void task_system_statechart(void)
 		else if ((true == p_task_system_dta->flag) && (0 < p_task_system_dta->tick))
 		{
 			p_task_system_dta->tick--;
-			p_task_system_dta->flag = false;
+			//p_task_system_dta->flag = false;
 		}
 
 

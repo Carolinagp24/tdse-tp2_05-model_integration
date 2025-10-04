@@ -234,7 +234,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : B2_Pin */
   GPIO_InitStruct.Pin = B2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(B2_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD3_Pin */
@@ -247,7 +247,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : B3_Pin */
   GPIO_InitStruct.Pin = B3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(B3_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
